@@ -3,7 +3,7 @@
 This dialog system is based on a very basic Transformer Seq2Seq architecture
 (see https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf for the
 original Transformer architecture). Much of the code was adapted from
-https://pytorch.org/tutorials/beginner/transformer\_tutorial.html
+https://pytorch.org/tutorials/beginner/transformer_tutorial.html
 
 ## Install Instructions
 
