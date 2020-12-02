@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # Pad and numericalize data
     train_contexts = [example.context for example in train_ds.examples]
     # It's probably learning mostly <pad> with a large size, so try smaller
-    max_train_context_size = 20 # max([len(context) for context in train_contexts])
+    max_train_context_size = 35 # max([len(context) for context in train_contexts])
     train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
     train_responses = [example.response for example in train_ds.examples]
     # responses and contexts need to be same size
@@ -79,12 +79,12 @@ if __name__ == '__main__':
 
     # Model hyperparameters
     ntokens = len(CONTEXT.vocab.stoi)
-    insize = 200
-    outsize = 200
+    insize = 100
+    outsize = 100
     nhid = 200
-    nlayers = 2
+    nlayers = 3
     nhead = 2
-    dropout = 0.1
+    dropout = 0.2
     model = TransformerModel(ntokens, insize, outsize, nhead, nhid, nlayers, dropout).to(device)
 
     criterion = nn.CrossEntropyLoss()
@@ -93,15 +93,16 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
     print('Created Torch objects')
 
-    bptt = 15
+    bptt = 20
     def get_batch(contexts, targets, i):
+        window = 15
         context = contexts[:, i].view(1, -1)
         target = targets[:, i].view(1, -1)
-        retctx = torch.zeros(bptt, context.size(1), dtype=context.dtype)
-        retres = torch.zeros(bptt, target.size(1), dtype=target.dtype)
+        retctx = torch.zeros(bptt, window, dtype=context.dtype)
+        retres = torch.zeros(bptt, window, dtype=target.dtype)
         for j in range(bptt):
-            retctx[j, :] = context
-            retres[j, :] = target
+            retctx[j, :] = context[0, j:j+window]
+            retres[j, :] = target[0, j:j+window]
         return retctx, retres
 
 #    def one_hot(vals, vocab):
@@ -123,23 +124,24 @@ if __name__ == '__main__':
         start_time = time.time()
         ntokens = len(CONTEXT.vocab.stoi)
         # print('Started training')
-        for batch, i in enumerate(range(0, train_contexts.size(0)-1), bptt):
-            # print('batch:', batch, 'i:', i)
+        for batch, i in enumerate(range(0, train_contexts.size(0)-1 )):#, bptt)):
+            print('batch:', batch, 'i:', i)
             data, targets = get_batch(train_contexts, train_responses, i)
             # print('got batch')
             optimizer.zero_grad()
             # print('zeroed gradient')
-            target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+            #target_mask = model.generate_square_subsequent_mask(targets.size(0)).to(device)
+            target_mask = None
             # print('generated new mask, if needed')
             output = model(data, targets, target_mask)
             # print('data:', data)
             # print(data.size())
             # print('target_mask:', target_mask)
             # print(target_mask.size())
-            # print(output)
+            print('output:', output)
             # print(output.size())
             # print('generated output')
-            # print('targets:', targets)
+            print('targets:', targets)
             # print('targets.size():', targets.size())
             loss = criterion(output.view(-1, ntokens), targets.view(-1))
             # print('loss:', loss)
@@ -173,7 +175,8 @@ if __name__ == '__main__':
             for i in range(0, data_source.size(0)-1):# - 1, bptt):
                 # print('i:', i)
                 data, targets = get_batch(data_source, data_targets, i)
-                target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+                #target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+                target_mask = None
                 output = eval_model(data, targets, target_mask)
                 output_flat = output.view(-1, ntokens)
                 # print('output_flat:', output_flat)
