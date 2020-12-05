@@ -44,20 +44,20 @@ if __name__ == '__main__':
     train_contexts = [example.context for example in train_ds.examples]
     # It's probably learning mostly <pad> with a large size, so try smaller
     max_train_context_size = 15 # max([len(context) for context in train_contexts])
-    #train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
+    train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
     train_responses = [example.response for example in train_ds.examples]
     # responses and contexts need to be same size
     max_train_response_size = max_train_context_size # max([len(response) for response in train_responses])
-    #train_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in train_responses]).to(device)
-    train_contexts_sized = list()
-    train_responses_sized = list()
-    for context, response in zip(train_contexts, train_responses):
-        if len(context) >= max_train_context_size and len(response) >= max_train_response_size:
-            train_contexts_sized.append(context[:max_train_context_size])
-            train_responses_sized.append(response[:max_train_response_size])
-    train_contexts = CONTEXT.numericalize(train_contexts_sized).to(device)
-    train_responses = CONTEXT.numericalize(train_responses_sized).to(device)
-    print('number of train_contexts:', len(train_contexts_sized))
+    train_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in train_responses]).to(device)
+    #train_contexts_sized = list()
+    #train_responses_sized = list()
+    #for context, response in zip(train_contexts, train_responses):
+    #    if len(context) >= max_train_context_size and len(response) >= max_train_response_size:
+    #        train_contexts_sized.append(context[:max_train_context_size])
+    #        train_responses_sized.append(response[:max_train_response_size])
+    #train_contexts = CONTEXT.numericalize(train_contexts_sized).to(device)
+    #train_responses = CONTEXT.numericalize(train_responses_sized).to(device)
+    #print('number of train_contexts:', len(train_contexts_sized))
 
     test_contexts = [example.context for example in test_ds.examples]
     max_test_context_size = max([len(context) for context in test_contexts])

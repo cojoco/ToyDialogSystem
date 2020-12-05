@@ -68,9 +68,9 @@ if __name__ == '__main__':
     response_words = []
     print('vocab size:', len(CONTEXT.vocab.itos))
     for i in range(response.size(0)):
-        print('i:', i)
-        print('response.size():', response.size())
-        print('response[i,0]:', response[i,0])
+#        print('i:', i)
+#        print('response.size():', response.size())
+#        print('response[i,0]:', response[i,0])
         word = CONTEXT.vocab.itos[response[i,0]]
         # End of sentence
         if word == '<pad>' or word == '<unk>':
