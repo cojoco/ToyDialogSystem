@@ -1,5 +1,5 @@
 """
-TransformerModel copied from
+TransformerModel adapted from
 https://pytorch.org/tutorials/beginner/transformer_tutorial.html
 """
 
