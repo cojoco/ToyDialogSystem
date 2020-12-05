@@ -43,12 +43,21 @@ if __name__ == '__main__':
     # Pad and numericalize data
     train_contexts = [example.context for example in train_ds.examples]
     # It's probably learning mostly <pad> with a large size, so try smaller
-    max_train_context_size = 35 # max([len(context) for context in train_contexts])
-    train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
+    max_train_context_size = 15 # max([len(context) for context in train_contexts])
+    #train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
     train_responses = [example.response for example in train_ds.examples]
     # responses and contexts need to be same size
     max_train_response_size = max_train_context_size # max([len(response) for response in train_responses])
-    train_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in train_responses]).to(device)
+    #train_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in train_responses]).to(device)
+    train_contexts_sized = list()
+    train_responses_sized = list()
+    for context, response in zip(train_contexts, train_responses):
+        if len(context) >= max_train_context_size and len(response) >= max_train_response_size:
+            train_contexts_sized.append(context[:max_train_context_size])
+            train_responses_sized.append(response[:max_train_response_size])
+    train_contexts = CONTEXT.numericalize(train_contexts_sized).to(device)
+    train_responses = CONTEXT.numericalize(train_responses_sized).to(device)
+    print('number of train_contexts:', len(train_contexts_sized))
 
     test_contexts = [example.context for example in test_ds.examples]
     max_test_context_size = max([len(context) for context in test_contexts])
@@ -88,20 +97,20 @@ if __name__ == '__main__':
     model = TransformerModel(ntokens, insize, outsize, nhead, nhid, nlayers, dropout).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    lr = 5.0
+    lr = 10.0
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.9)
     print('Created Torch objects')
 
-    bptt = 20
+    bptt = max_train_context_size - 5
     def get_batch(contexts, targets, i):
-        window = 15
+        window = 5
         context = contexts[:, i].view(1, -1)
         target = targets[:, i].view(1, -1)
         retctx = torch.zeros(bptt, window, dtype=context.dtype)
         retres = torch.zeros(bptt, window, dtype=target.dtype)
         for j in range(bptt):
-            retctx[j, :] = context[0, j:j+window]
+            retctx[j, :] = target[0, j:j+window]
             retres[j, :] = target[0, j:j+window]
         return retctx, retres
 
@@ -125,23 +134,24 @@ if __name__ == '__main__':
         ntokens = len(CONTEXT.vocab.stoi)
         # print('Started training')
         for batch, i in enumerate(range(0, train_contexts.size(0)-1 )):#, bptt)):
-            print('batch:', batch, 'i:', i)
+            # print('batch:', batch, 'i:', i)
             data, targets = get_batch(train_contexts, train_responses, i)
             # print('got batch')
             optimizer.zero_grad()
             # print('zeroed gradient')
-            #target_mask = model.generate_square_subsequent_mask(targets.size(0)).to(device)
-            target_mask = None
+            src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+            target_mask = model.generate_square_subsequent_mask(targets.size(0)).to(device)
+            #target_mask = None
             # print('generated new mask, if needed')
-            output = model(data, targets, target_mask)
+            output = model(data, targets, src_mask, target_mask)
             # print('data:', data)
             # print(data.size())
             # print('target_mask:', target_mask)
             # print(target_mask.size())
-            print('output:', output)
+            # print('output:', output)
             # print(output.size())
             # print('generated output')
-            print('targets:', targets)
+            # print('targets:', targets)
             # print('targets.size():', targets.size())
             loss = criterion(output.view(-1, ntokens), targets.view(-1))
             # print('loss:', loss)
@@ -175,9 +185,10 @@ if __name__ == '__main__':
             for i in range(0, data_source.size(0)-1):# - 1, bptt):
                 # print('i:', i)
                 data, targets = get_batch(data_source, data_targets, i)
-                #target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
-                target_mask = None
-                output = eval_model(data, targets, target_mask)
+                src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+                target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+                #target_mask = None
+                output = eval_model(data, targets, src_mask, target_mask)
                 output_flat = output.view(-1, ntokens)
                 # print('output_flat:', output_flat)
                 # print('targets:', targets)
@@ -186,7 +197,7 @@ if __name__ == '__main__':
         return total_loss / (len(data_source) - 1)
 
     best_val_loss = float("inf")
-    epochs = 10 # The number of epochs
+    epochs = 20 # The number of epochs
     best_model = None
     
     for epoch in range(1, epochs + 1):

@@ -26,33 +26,34 @@ if __name__ == '__main__':
         #print(in_context.size())
         #print('response:', response)
         #print(response.size())
-        output = best_model(in_context, response, None)
-        tmp_ctx = best_model.input_encoder(in_context) * math.sqrt(best_model.ninp)
+        output = best_model(in_context, response, None, None)
+#        tmp_ctx = best_model.input_encoder(in_context) * math.sqrt(best_model.ninp)
 #        print('input_encoder:', tmp_ctx)
-        tmp_ctx = best_model.pos_input_encoder(tmp_ctx)
+#        tmp_ctx = best_model.pos_input_encoder(tmp_ctx)
 #        print('pos_encoder:', tmp_ctx)
-        tmp_ctx = best_model.transformer_encoder(tmp_ctx)
+#        tmp_ctx = best_model.transformer_encoder(tmp_ctx)
 #        print('trans_encoder:', tmp_ctx)
-        tmp_res = best_model.output_encoder(response) * math.sqrt(best_model.noutp)
+#        tmp_res = best_model.output_encoder(response) * math.sqrt(best_model.noutp)
 #        print('output_encoder:', tmp_res)
-        tmp_res = best_model.pos_output_encoder(tmp_res)
+#        tmp_res = best_model.pos_output_encoder(tmp_res)
 #        print('pos_encoder:', tmp_res)
-        tmp_out = best_model.transformer_decoder(tmp_res, tmp_ctx, None)
+#        tmp_out = best_model.transformer_decoder(tmp_res, tmp_ctx, None)
 #        test_out = best_model.transformer_decoder(tmp_res, torch.zeros(tmp_ctx.size(), dtype=tmp_ctx.dtype))
 #        print('trans_decoder:', tmp_out)
 #        print('test_decode:', test_out)
-        tmp_out = best_model.linear_decoder(tmp_out)
+#        tmp_out = best_model.linear_decoder(tmp_out)
 #        test_out = best_model.linear_decoder(test_out)
 #        print('linear_decoder:', tmp_out)
 #        print('test_linear:', test_out)
-        biggest_val = float('-inf')
-        biggest_index = -1
-        for i, val in enumerate(tmp_out[0, 0, :]):
-            if val > biggest_val:
-                biggest_val = val
-                biggest_index = i
-        print('biggest_index:', biggest_index)
-        print(CONTEXT.vocab.itos[biggest_index])
+#        tmp_out = best_model.softmax_decoder(tmp_out)
+#        biggest_val = float('-inf')
+#        biggest_index = -1
+#        for i, val in enumerate(tmp_out[0, 0, :]):
+#            if val > biggest_val:
+#                biggest_val = val
+#                biggest_index = i
+#        print('biggest_index:', biggest_index)
+#        print(CONTEXT.vocab.itos[biggest_index])
 
         next_word_val = float('-inf')
         next_word_index = -1
@@ -65,6 +66,14 @@ if __name__ == '__main__':
 
     # Say the response
     response_words = []
+    print('vocab size:', len(CONTEXT.vocab.itos))
     for i in range(response.size(0)):
-        response_words.append(CONTEXT.vocab.itos[response[i,0]])
+        print('i:', i)
+        print('response.size():', response.size())
+        print('response[i,0]:', response[i,0])
+        word = CONTEXT.vocab.itos[response[i,0]]
+        # End of sentence
+        if word == '<pad>' or word == '<unk>':
+            break
+        response_words.append(word)
     print(' '.join(response_words))

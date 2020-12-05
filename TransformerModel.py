@@ -29,7 +29,7 @@ class TransformerModel(nn.Module):
         decoder_layers = TransformerDecoderLayer(noutp, nhead, nhid, dropout)
         self.transformer_decoder = TransformerDecoder(decoder_layers, nlayers)
         self.linear_decoder = nn.Linear(noutp, ntoken)
-        self.softmax_decoder = nn.Softmax(dim=1)
+        self.softmax_decoder = nn.Softmax(dim=0)
         self.noutp = noutp
         self.init_weights()
 
@@ -45,10 +45,10 @@ class TransformerModel(nn.Module):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def forward(self, context, response, response_mask):
+    def forward(self, context, response, src_mask, response_mask):
         context = self.input_encoder(context) * math.sqrt(self.ninp)
         context = self.pos_input_encoder(context)
-        encoder_output = self.transformer_encoder(context)
+        encoder_output = self.transformer_encoder(context, src_mask)
         response = self.output_encoder(response) * math.sqrt(self.noutp)
         response = self.pos_output_encoder(response)
         #print('encoder_output:', encoder_output)
@@ -61,7 +61,7 @@ class TransformerModel(nn.Module):
         output = self.linear_decoder(output)
         #print('linear output:', output)
         #print(output.size())
-#        output = self.softmax_decoder(output)
+        output = self.softmax_decoder(output)
         #print('softmax output:', output)
         #print(output.size())
         return output
