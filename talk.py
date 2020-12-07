@@ -11,14 +11,14 @@ if __name__ == '__main__':
     with open('model.pickle', 'rb') as handle:
         best_model = pickle.load(handle)
     best_model.eval()
-    with open('CONTEXT.pickle', 'rb') as handle:
-        CONTEXT = pickle.load(handle)
+    with open('TEXT.pickle', 'rb') as handle:
+        TEXT = pickle.load(handle)
 
     ########
     # Start talking
     ########
     in_sentence = input('Say something: ')
-    in_context = CONTEXT.numericalize([in_sentence.lower().split(' ')])
+    in_context = TEXT.numericalize([in_sentence.lower().split(' ')])
     response = torch.zeros((15,1), dtype=in_context.dtype)
     # Say 15 words
     for wordnum in range(15):
@@ -53,25 +53,29 @@ if __name__ == '__main__':
 #                biggest_val = val
 #                biggest_index = i
 #        print('biggest_index:', biggest_index)
-#        print(CONTEXT.vocab.itos[biggest_index])
+#        print(TEXT.vocab.itos[biggest_index])
 
         next_word_val = float('-inf')
         next_word_index = -1
+        print(output[-1, 0, :].size())
         for i, val in enumerate(output[-1, 0, :]):
             if val > next_word_val:
                 next_word_val = val
                 next_word_index = i
+        print('biggest_val is: ', next_word_val)
         response[wordnum, 0] = next_word_index
 #        print(response)
 
     # Say the response
     response_words = []
-    print('vocab size:', len(CONTEXT.vocab.itos))
+#    print('vocab size:', len(TEXT.vocab.itos))
+#    print('vocab size:', len(itos))
+#    print('other size:', len(TEXT.vocab.stoi))
     for i in range(response.size(0)):
 #        print('i:', i)
 #        print('response.size():', response.size())
 #        print('response[i,0]:', response[i,0])
-        word = CONTEXT.vocab.itos[response[i,0]]
+        word = TEXT.vocab.itos[response[i,0]]
         # End of sentence
         if word == '<pad>' or word == '<unk>':
             break

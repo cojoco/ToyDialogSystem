@@ -9,16 +9,15 @@ from TransformerModel import TransformerModel
 
 if __name__ == '__main__':
     # Create Field objects
-    CONTEXT = data.Field(tokenize=get_tokenizer('basic_english'),
-                         lower=True)
-    RESPONSE = data.Field(tokenize=get_tokenizer('basic_english'),
-                         lower=True,
-                         is_target=True)
+    max_text_length = 25
+    TEXT = data.Field(tokenize=get_tokenizer('basic_english'),
+                      lower=True,
+                      fix_length=max_text_length)
 
     # Create column tuples
     fields = [
-        ('context', CONTEXT),
-        ('response', RESPONSE)
+        ('context', TEXT),
+        ('response', TEXT)
     ]
 
     # Load the dataset
@@ -33,45 +32,32 @@ if __name__ == '__main__':
     )
     print('Loaded data')
 
-    # They need the same vocab, but this is an inefficient way to do that
-    CONTEXT.build_vocab(train_ds.context)
-    RESPONSE.build_vocab(train_ds.context)
+    TEXT.build_vocab(train_ds.context, train_ds.response)
     print('Built vocab')
+    # print('TEXT.vocab.stoi:', len(TEXT.vocab.stoi))
+    # print('TEXT.vocab.itos:', len(TEXT.vocab.itos))
 
     device = torch.device('cpu')
 
     # Pad and numericalize data
-    train_contexts = [example.context for example in train_ds.examples]
-    # It's probably learning mostly <pad> with a large size, so try smaller
-    max_train_context_size = 15 # max([len(context) for context in train_contexts])
-    train_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in train_contexts]).to(device)
-    train_responses = [example.response for example in train_ds.examples]
-    # responses and contexts need to be same size
-    max_train_response_size = max_train_context_size # max([len(response) for response in train_responses])
-    train_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in train_responses]).to(device)
-    #train_contexts_sized = list()
-    #train_responses_sized = list()
-    #for context, response in zip(train_contexts, train_responses):
-    #    if len(context) >= max_train_context_size and len(response) >= max_train_response_size:
-    #        train_contexts_sized.append(context[:max_train_context_size])
-    #        train_responses_sized.append(response[:max_train_response_size])
-    #train_contexts = CONTEXT.numericalize(train_contexts_sized).to(device)
-    #train_responses = CONTEXT.numericalize(train_responses_sized).to(device)
-    #print('number of train_contexts:', len(train_contexts_sized))
+    train_contexts = TEXT.process(train_ds.context).to(device)
+    train_responses = TEXT.process(train_ds.response).to(device)
+    test_contexts = TEXT.process(test_ds.context).to(device)
+    test_responses = TEXT.process(test_ds.response).to(device)
+    valid_contexts = TEXT.process(valid_ds.context).to(device)
+    valid_responses = TEXT.process(valid_ds.response).to(device)
 
-    test_contexts = [example.context for example in test_ds.examples]
-    max_test_context_size = max([len(context) for context in test_contexts])
-    test_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in test_contexts]).to(device)
-    test_responses = [example.response for example in test_ds.examples]
-    max_test_response_size = max([len(response) for response in test_responses])
-    test_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in test_responses]).to(device)
+    # test_contexts = [example.context for example in test_ds.examples]
+    # test_contexts = TEXT.process(test_contexts).to(device)
+    # test_responses = [example.response for example in test_ds.examples]
+    # test_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in test_responses]).to(device)
 
-    valid_contexts = [example.context for example in valid_ds.examples]
-    max_valid_context_size = max([len(context) for context in valid_contexts])
-    valid_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in valid_contexts]).to(device)
-    valid_responses = [example.response for example in valid_ds.examples]
-    max_valid_response_size = max([len(response) for response in valid_responses])
-    valid_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in valid_responses]).to(device)
+    # valid_contexts = [example.context for example in valid_ds.examples]
+    # max_valid_context_size = max([len(context) for context in valid_contexts])
+    # valid_contexts = CONTEXT.numericalize([context[:min(len(context), max_train_context_size)] + ['<pad>']*(max_train_context_size - len(context)) for context in valid_contexts]).to(device)
+    # valid_responses = [example.response for example in valid_ds.examples]
+    # max_valid_response_size = max([len(response) for response in valid_responses])
+    # valid_responses = CONTEXT.numericalize([response[:min(len(response), max_train_response_size)] + ['<pad>']*(max_train_response_size - len(response)) for response in valid_responses]).to(device)
 
     print('Generated contexts and responses')
 
@@ -87,7 +73,7 @@ if __name__ == '__main__':
     
 
     # Model hyperparameters
-    ntokens = len(CONTEXT.vocab.stoi)
+    ntokens = len(TEXT.vocab.stoi)
     insize = 100
     outsize = 100
     nhid = 200
@@ -102,9 +88,9 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.9)
     print('Created Torch objects')
 
-    bptt = max_train_context_size - 5
+    bptt = max_text_length - 10
     def get_batch(contexts, targets, i):
-        window = 5
+        window = 10
         context = contexts[:, i].view(1, -1)
         target = targets[:, i].view(1, -1)
         retctx = torch.zeros(bptt, window, dtype=context.dtype)
@@ -131,7 +117,7 @@ if __name__ == '__main__':
         model.train() # Turn on the train mode
         total_loss = 0.
         start_time = time.time()
-        ntokens = len(CONTEXT.vocab.stoi)
+        ntokens = len(TEXT.vocab.stoi)
         # print('Started training')
         for batch, i in enumerate(range(0, train_contexts.size(0)-1 )):#, bptt)):
             # print('batch:', batch, 'i:', i)
@@ -139,11 +125,11 @@ if __name__ == '__main__':
             # print('got batch')
             optimizer.zero_grad()
             # print('zeroed gradient')
-            src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+            #src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
             target_mask = model.generate_square_subsequent_mask(targets.size(0)).to(device)
             #target_mask = None
             # print('generated new mask, if needed')
-            output = model(data, targets, src_mask, target_mask)
+            output = model(data, targets, None, target_mask)
             # print('data:', data)
             # print(data.size())
             # print('target_mask:', target_mask)
@@ -179,16 +165,16 @@ if __name__ == '__main__':
     def evaluate(eval_model, data_source, data_targets):
         eval_model.eval() # Turn on the evaluation mode
         total_loss = 0.
-        ntokens = len(CONTEXT.vocab.stoi)
+        ntokens = len(TEXT.vocab.stoi)
         with torch.no_grad():
             # print('data_source.size(0):', data_source.size(0))
             for i in range(0, data_source.size(0)-1):# - 1, bptt):
                 # print('i:', i)
                 data, targets = get_batch(data_source, data_targets, i)
-                src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
+                #src_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
                 target_mask = model.generate_square_subsequent_mask(data.size(0)).to(device)
                 #target_mask = None
-                output = eval_model(data, targets, src_mask, target_mask)
+                output = eval_model(data, targets, None, target_mask)
                 output_flat = output.view(-1, ntokens)
                 # print('output_flat:', output_flat)
                 # print('targets:', targets)
@@ -227,6 +213,6 @@ if __name__ == '__main__':
 
     with open('model.pickle', 'wb') as handle:
         pickle.dump(best_model, handle)
-    with open('CONTEXT.pickle', 'wb') as handle:
-        pickle.dump(CONTEXT, handle)
+    with open('TEXT.pickle', 'wb') as handle:
+        pickle.dump(TEXT, handle)
 
