@@ -23,11 +23,16 @@ the ENV with `. ENV/bin/activate`.
 
 ## Runtime Instructions
 
-To train the model, `python train.py`. This will generate two files,
-`model.pickle` and `CONTEXT.pickle`. Both of these files are necessary for
+You can use the pretrained model in Github, which will likely say some
+variation on "wire willing there able implies implies formally genesis
+genesis genesis formally formally agricultural agricultural with"
+because it doesn't seem to be training right.
+
+To train another model, type `python train.py`. This will generate two files,
+`model.pickle` and `TEXT.pickle`. Both of these files are necessary for
 `talk.py` to function.
 
-To talk with the model, `python talk.py`.
+To talk with the model, type `python talk.py`.
 
 ## Other Information
 
