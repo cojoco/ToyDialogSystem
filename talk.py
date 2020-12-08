@@ -57,12 +57,13 @@ if __name__ == '__main__':
 
         next_word_val = float('-inf')
         next_word_index = -1
-        print(output[-1, 0, :].size())
+        #print(output[-1, 0, :].size())
         for i, val in enumerate(output[-1, 0, :]):
-            if val > next_word_val:
+            # i == 0 is '<unk>', i == 1 is '<pad>'
+            if val > next_word_val and i > 1 and i < len(TEXT.vocab.itos):
                 next_word_val = val
                 next_word_index = i
-        print('biggest_val is: ', next_word_val)
+        #print('biggest_val is: ', next_word_val)
         response[wordnum, 0] = next_word_index
 #        print(response)
 
